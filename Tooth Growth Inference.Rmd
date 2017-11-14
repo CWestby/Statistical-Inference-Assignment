@@ -1,0 +1,95 @@
+---
+title: "Statistical Inference on Tooth Growth"
+author: "Charles Westby"
+date: "11/13/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+#Synopsis
+
+In this paper we will look at the results of a dataset called ToothGrowth in R. This dataset contains the data from a test that was done on guinea pigs. The guinea pigs were given Vitamin C from two different sources. One source was absorbic acid and the other was orange juice. There were also three different dosage levels. Either they were give 0.5, 1.0 or 2.0 mg/day of the Vitamin C. From this dataset we are going to see if there is any statistical difference in the length of odontoblasts (cells responsible for tooth growth), as a result of the different delivery methods for Vitamin C or the different dosages.
+
+#Data Processing
+##Loading Data
+
+Here I loaded the packages that I would use to manipulate the data. Then I also loaded the dataset ToothGrowth
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+data("ToothGrowth")
+```
+
+##Understanding The Data
+```{r}
+summary(ToothGrowth)
+```
+ 
+We see that the mean growth in odontoblasts is 18.81 and the median growth in odontoblasts is 19.25. We also see that 30 guinea pigs were given orange juice and 30 guinea pigs were given absorbic acid. However, we also see a maximum and minumum value for dose when it should be a factor variable. So we convert that column to a factor variable.
+```{r}
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+```
+ 
+We then check out the data again
+ 
+```{r}
+summary(ToothGrowth)
+```
+We now have one continuous variable, len, to represent the length of odontoblasts and two factor variables, supp and dose, to represent supplement and dose respectively. 
+
+#Results
+##Visualizing The Data
+ 
+First we looked at a histogram of the length variable to get an idea for the distribution of the length variable
+```{r echo=TRUE}
+ggplot(ToothGrowth, aes(x = len)) +
+  geom_histogram(binwidth = 2) + labs(title = "Length Distribution", x = "Length")
+```
+ 
+Then we looked at the change in the length of odonoblast. First we looked by supplment and then we looked by dose
+ 
+```{r echo=TRUE}
+supplement_gr <- ggplot(ToothGrowth, aes(x = supp, y = len, col = dose)) +
+  geom_boxplot() + facet_grid(~ dose) + labs(x = "Supplement", y = "Length of Odonoblasts", title = "Length by Supplement")
+dose_gr <-ggplot(ToothGrowth, aes(x = dose, y = len, col = supp)) +
+  geom_boxplot() + facet_grid(~ supp) + labs(x = "Dose", y = "Length of Odonoplasts", title = "Length by Dose")
+grid.arrange(supplement_gr, dose_gr, ncol = 2)
+```
+ 
+Here we see that supplement does not seem like much of a factor in the growth of the odonoblasts. But we do see dosage having an effect. In order to quantify these differences we see the mean of growth when grouped by supplement and when grouped by dose.
+
+```{r echo=TRUE}
+by_supp <- ToothGrowth %>%
+  group_by(supp) %>%
+  summarize(supp_mean = mean(len))
+by_supp
+by_dose <- ToothGrowth %>%
+  group_by(dose) %>%
+  summarize(dose_mean = mean(len))
+by_dose
+```
+We see a small difference when looking at the means compared by supplement. Where we see the most change in the mean is when we see the change in means by dosage. However, we will do t-tests to see if we can make any inferences from the data.
+
+##Statistical Inference
+###T-Test Length by Supplement
+```{r echo=TRUE}
+t.test(len ~ supp, ToothGrowth)
+```
+###T-Test Length by Dosages
+Here the dosages have to be broken up into different groups because the t-test are for one on one comparisons.
+```{r}
+ToothGrowth0.5 <- ToothGrowth %>%
+  filter(dose %in% c(0.5, 1.0)) 
+t.test(len ~ dose, ToothGrowth0.5)
+ToothGrowth1.0 <- ToothGrowth %>%
+  filter(dose %in% c(0.5, 2.0)) 
+t.test(len ~ dose, ToothGrowth1.0)
+ToothGrowth2.0 <- ToothGrowth %>%
+  filter(dose %in% c(1.0, 2.0)) 
+t.test(len ~ dose, ToothGrowth2.0)
+```
+#Conclusion
+From these t-tests we can draw a few inferences. From the first t-test of length of odonoblasts by supplement, we can say with 95% probability that the difference in the effects of the supplements is between -0.17 and 7.57 units of length for odonoblasts. However the confidence interval includes 0, therefore we cannot reject the null hypothesis that the supplement causes a difference in length of odonoblasts. The p-value, 0.603, is greater than 0.05, which also shows that we cannot reject the null hypothesis. Therefore we do no conclude that the difference in length is a result of the different supplements.
+However the t-tests that were done on the different dosages show that we can reject the null hypothesis, that the different dosages cause no difference in the length of odonoblasts. All of the t-statistics fall within the rejection region. Also all the p-values are well below the 0.05 threshold. Therefore when it comes to dosages we can reject the null hypothesis that there is no difference between doses. 
